@@ -87,12 +87,21 @@ jobs:
         run: |
           mkdir -p staged-apks
           count=0
-          for apk in $(find app/build/outputs/apk -name "*.apk"); do
-            echo "Found APK: $apk"
-            filename=$(basename "$apk")
-            cp "$apk" "staged-apks/Eos-${filename}"
+          # Stage clean Eos.apk
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp "app/build/outputs/apk/release/app-release.apk" "staged-apks/Eos.apk"
+            cp "app/build/outputs/apk/release/app-release.apk" "staged-apks/Eos-release.apk"
+            count=$((count+2))
+          fi
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+            if [ ! -f staged-apks/Eos.apk ]; then
+              cp "app/build/outputs/apk/debug/app-debug.apk" "staged-apks/Eos.apk"
+            fi
+            cp "app/build/outputs/apk/debug/app-debug.apk" "staged-apks/Eos-installable.apk"
             count=$((count+1))
-          done
+          fi
+          echo "Staged APKs:"
+          ls -la staged-apks/
           echo "staged_count=$count" >> $GITHUB_OUTPUT
 
       - name: Upload APK Artifact
