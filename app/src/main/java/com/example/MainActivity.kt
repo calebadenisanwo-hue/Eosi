@@ -7,13 +7,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.example.meridian.data.repository.DemoRepo
-import com.example.meridian.ui.MeridianApp
+import com.example.meridian.data.jagi.JagiRepo
+import com.example.meridian.ui.screens.jagi.JagiRootApp
 import com.example.ui.theme.MeridianTheme
 
 class MainActivity : ComponentActivity() {
 
-    private val repo by lazy { DemoRepo() }
+    private val jagiRepo by lazy { JagiRepo() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MeridianTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    MeridianApp(repo = repo)
+                    JagiRootApp(repo = jagiRepo)
                 }
             }
         }
