@@ -43,6 +43,7 @@ fun JagiUsScreen(
     onBack: () -> Unit,
     onOpenMemories: () -> Unit,
     onOpenLists: () -> Unit,
+    onEditProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     BackHandler { onBack() }
@@ -174,12 +175,20 @@ fun JagiUsScreen(
                         lineHeight = 66.sp
                     )
 
+                    val monthName = coupleData.anniversaryDate.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
                     Text(
-                        text = "DAYS TOGETHER · SINCE 2 MAY 2026",
+                        text = "DAYS TOGETHER · SINCE ${coupleData.anniversaryDate.dayOfMonth} $monthName ${coupleData.anniversaryDate.year}",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFA8998D),
                         letterSpacing = 1.2.sp
+                    )
+                    Text(
+                        text = "Tap to customize names & dates ✏️",
+                        fontSize = 11.sp,
+                        color = Color(0xFFD77A61),
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { onEditProfile() }
                     )
                 }
             }
@@ -217,9 +226,26 @@ fun JagiUsScreen(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            PixelCompanionPet(size = 56.dp, showAura = true)
+                            Box(
+                                modifier = Modifier
+                                    .bounceClick { repo.petCompanion() }
+                                    .testTag("pet_companion_interactive"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                PixelCompanionPet(size = 64.dp, showAura = true)
+                            }
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Button(
+                                onClick = { repo.petCompanion() },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFDF4EB)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Pet ${coupleData.companionName} (+3 XP) ✨", color = Color(0xFFD77A61), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
 
                             // Dots indicator
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {

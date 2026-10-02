@@ -23,7 +23,7 @@ import androidx.compose.ui.input.pointer.pointerInput
  */
 fun Modifier.bounceClick(
     scaleDown: Float = 0.96f,
-    onClick: () -> Unit
+    onClick: () -> Unit = {}
 ): Modifier = composed {
     var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(

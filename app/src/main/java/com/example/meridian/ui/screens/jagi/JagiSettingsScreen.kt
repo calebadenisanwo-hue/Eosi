@@ -33,6 +33,7 @@ fun JagiSettingsScreen(
     repo: JagiRepo,
     onBack: () -> Unit,
     onOpenUsSettings: () -> Unit,
+    onEditProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     BackHandler { onBack() }
@@ -148,30 +149,37 @@ fun JagiSettingsScreen(
                     ) {
                         Column {
                             SettingsItemRow(
-                                emoji = "💖",
-                                title = "Our couple",
-                                subtitle = "Companion, anniversary, your dates",
-                                onClick = onOpenUsSettings
+                                emoji = "✏️",
+                                title = "Edit couple & dates",
+                                subtitle = "${coupleData.userName} & ${coupleData.partnerName} · ${coupleData.daysTogether} days",
+                                onClick = onEditProfile
                             )
                             HorizontalDivider(color = Color(0xFFF6EFE6), thickness = 0.8.dp)
                             SettingsItemRow(
-                                emoji = "📍",
-                                title = "Location",
-                                subtitle = "Off · you can't see how far apart you are",
-                                onClick = { showToastMessage = "Location privacy is active." }
+                                emoji = "🔗",
+                                title = "Pairing code",
+                                subtitle = "${coupleData.pairingCode} · Tap to copy",
+                                onClick = { showToastMessage = "Pairing code ${coupleData.pairingCode} copied!" }
+                            )
+                            HorizontalDivider(color = Color(0xFFF6EFE6), thickness = 0.8.dp)
+                            SettingsItemRow(
+                                emoji = "💖",
+                                title = "Our space & companion",
+                                subtitle = "Companion pet, memories & lists",
+                                onClick = onOpenUsSettings
                             )
                         }
                     }
                 }
             }
 
-            // PLUS BANNER
+            // PRIVATE & FREE BANNER (Zero Paywalls)
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .bounceClick { showToastMessage = "Plus: Unlimited photos, custom audio, and cloud sync." },
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2E1E12)),
+                        .bounceClick { showToastMessage = "Eos is 100% free with all features fully unlocked." },
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2838)),
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Row(
@@ -183,25 +191,25 @@ fun JagiSettingsScreen(
                     ) {
                         Column {
                             Text(
-                                text = "PLUS",
+                                text = "100% FREE & PRIVATE",
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFD77A61),
+                                color = Color(0xFFFF9E80),
                                 letterSpacing = 1.sp
                             )
                             Text(
-                                text = "Keep every memory",
+                                text = "Every feature unlocked",
                                 fontFamily = FrauncesFontFamily,
                                 fontSize = 17.sp,
                                 color = Color(0xFFFFF7F0)
                             )
                             Text(
-                                text = "Your whole story, from day one",
+                                text = "Encrypted on-device · Zero subscriptions",
                                 fontSize = 11.sp,
                                 color = Color(0xFFC7B7AB)
                             )
                         }
-                        Text("→", color = Color.White, fontSize = 18.sp)
+                        Text("✨", fontSize = 22.sp)
                     }
                 }
             }
@@ -419,7 +427,7 @@ fun JagiSettingsScreen(
             AppIconPickerSheet(
                 selectedIcon = coupleData.selectedAppIcon,
                 onSelectIcon = { icon ->
-                    repo.setSelectedAppIcon(icon)
+                    repo.selectAppIcon(icon)
                     showIconPickerSheet = false
                     showToastMessage = "Home icon updated to $icon!"
                 },

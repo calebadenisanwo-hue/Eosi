@@ -29,6 +29,8 @@ fun JagiRootApp(
 ) {
     var currentScreen by remember { mutableStateOf(JagiScreen.HOME) }
     var showAnswerSheet by remember { mutableStateOf(false) }
+    var showFullscreenArena by remember { mutableStateOf(false) }
+    var showProfileDialog by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -36,73 +38,93 @@ fun JagiRootApp(
             .background(Color(0xFFFAF5EE))
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
-        AnimatedContent(
-            targetState = currentScreen,
-            transitionSpec = {
-                if (targetState == JagiScreen.HOME) {
-                    (fadeIn(animationSpec = tween(220)) + slideInHorizontally { -it / 4 })
-                        .togetherWith(fadeOut(animationSpec = tween(180)) + slideOutHorizontally { it / 4 })
-                } else {
-                    (fadeIn(animationSpec = tween(220)) + slideInHorizontally { it / 4 })
-                        .togetherWith(fadeOut(animationSpec = tween(180)) + slideOutHorizontally { -it / 4 })
-                }
-            },
-            label = "screen_transition"
-        ) { screen ->
-            when (screen) {
-                JagiScreen.HOME -> {
-                    JagiHomeScreen(
-                        repo = repo,
-                        onOpenUs = { currentScreen = JagiScreen.US },
-                        onOpenPlay = { currentScreen = JagiScreen.PLAY },
-                        onOpenMemories = { currentScreen = JagiScreen.MEMORIES },
-                        onOpenLists = { currentScreen = JagiScreen.LISTS },
-                        onOpenSettings = { currentScreen = JagiScreen.SETTINGS },
-                        onAnswerQuestion = { showAnswerSheet = true }
-                    )
-                }
-                JagiScreen.US -> {
-                    JagiUsScreen(
-                        repo = repo,
-                        onBack = { currentScreen = JagiScreen.HOME },
-                        onOpenMemories = { currentScreen = JagiScreen.MEMORIES },
-                        onOpenLists = { currentScreen = JagiScreen.LISTS }
-                    )
-                }
-                JagiScreen.PLAY -> {
-                    JagiPlayScreen(
-                        repo = repo,
-                        onBack = { currentScreen = JagiScreen.HOME },
-                        onAnswerQuestion = { showAnswerSheet = true }
-                    )
-                }
-                JagiScreen.MEMORIES -> {
-                    JagiMemoriesScreen(
-                        repo = repo,
-                        onBack = { currentScreen = JagiScreen.HOME }
-                    )
-                }
-                JagiScreen.LISTS -> {
-                    JagiListsScreen(
-                        repo = repo,
-                        onBack = { currentScreen = JagiScreen.HOME }
-                    )
-                }
-                JagiScreen.SETTINGS -> {
-                    JagiSettingsScreen(
-                        repo = repo,
-                        onBack = { currentScreen = JagiScreen.HOME },
-                        onOpenUsSettings = { currentScreen = JagiScreen.US }
-                    )
+        if (showFullscreenArena) {
+            JagiFullscreenGameArena(
+                repo = repo,
+                onClose = { showFullscreenArena = false }
+            )
+        } else {
+            AnimatedContent(
+                targetState = currentScreen,
+                transitionSpec = {
+                    if (targetState == JagiScreen.HOME) {
+                        (fadeIn(animationSpec = tween(220)) + slideInHorizontally { -it / 4 })
+                            .togetherWith(fadeOut(animationSpec = tween(180)) + slideOutHorizontally { it / 4 })
+                    } else {
+                        (fadeIn(animationSpec = tween(220)) + slideInHorizontally { it / 4 })
+                            .togetherWith(fadeOut(animationSpec = tween(180)) + slideOutHorizontally { -it / 4 })
+                    }
+                },
+                label = "screen_transition"
+            ) { screen ->
+                when (screen) {
+                    JagiScreen.HOME -> {
+                        JagiHomeScreen(
+                            repo = repo,
+                            onOpenUs = { currentScreen = JagiScreen.US },
+                            onOpenPlay = { currentScreen = JagiScreen.PLAY },
+                            onOpenArena = { showFullscreenArena = true },
+                            onOpenMemories = { currentScreen = JagiScreen.MEMORIES },
+                            onOpenLists = { currentScreen = JagiScreen.LISTS },
+                            onOpenSettings = { currentScreen = JagiScreen.SETTINGS },
+                            onAnswerQuestion = { showAnswerSheet = true },
+                            onEditProfile = { showProfileDialog = true }
+                        )
+                    }
+                    JagiScreen.US -> {
+                        JagiUsScreen(
+                            repo = repo,
+                            onBack = { currentScreen = JagiScreen.HOME },
+                            onOpenMemories = { currentScreen = JagiScreen.MEMORIES },
+                            onOpenLists = { currentScreen = JagiScreen.LISTS },
+                            onEditProfile = { showProfileDialog = true }
+                        )
+                    }
+                    JagiScreen.PLAY -> {
+                        JagiPlayScreen(
+                            repo = repo,
+                            onBack = { currentScreen = JagiScreen.HOME },
+                            onOpenArena = { showFullscreenArena = true },
+                            onAnswerQuestion = { showAnswerSheet = true }
+                        )
+                    }
+                    JagiScreen.MEMORIES -> {
+                        JagiMemoriesScreen(
+                            repo = repo,
+                            onBack = { currentScreen = JagiScreen.HOME }
+                        )
+                    }
+                    JagiScreen.LISTS -> {
+                        JagiListsScreen(
+                            repo = repo,
+                            onBack = { currentScreen = JagiScreen.HOME }
+                        )
+                    }
+                    JagiScreen.SETTINGS -> {
+                        JagiSettingsScreen(
+                            repo = repo,
+                            onBack = { currentScreen = JagiScreen.HOME },
+                            onOpenUsSettings = { currentScreen = JagiScreen.US },
+                            onEditProfile = { showProfileDialog = true }
+                        )
+                    }
                 }
             }
         }
 
-        // Global Modal: Answer Today's Question
+        // Answer Sheet
         if (showAnswerSheet) {
             JagiAnswerSheet(
                 repo = repo,
                 onDismiss = { showAnswerSheet = false }
+            )
+        }
+
+        // Profile & Couple Customizer Dialog
+        if (showProfileDialog) {
+            JagiProfileEditDialog(
+                repo = repo,
+                onDismiss = { showProfileDialog = false }
             )
         }
     }
