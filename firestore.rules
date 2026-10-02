@@ -1,0 +1,189 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isUser(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+    
+    function isSpaceMember(spaceId) {
+      return isAuthenticated() && 
+        request.auth.uid in get(/databases/$(database)/documents/spaces/$(spaceId)).data.members;
+    }
+    
+    function getSpace(spaceId) {
+      return get(/databases/$(database)/documents/spaces/$(spaceId)).data;
+    }
+
+    // Users collection: public profile and keys
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isUser(uid) && request.resource.data.publicKey is string;
+      allow update: if isUser(uid);
+      allow delete: if isUser(uid);
+      
+      // Client-opaque wrapped private key backup
+      match /private/keyBackup {
+        allow read, write: if isUser(uid);
+      }
+    }
+    
+    // Single-use Invites: fetched only by SHA-256 hash of invite code (no broad listing)
+    match /invites/{codeHash} {
+      allow get: if isAuthenticated();
+      allow list: if false; // Disallow collection-wide enumeration
+      
+      // Creator makes the invite
+      allow create: if isAuthenticated() &&
+        request.resource.data.creatorUid == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.expiresAt > request.time;
+        
+      // Partner requests to join by writing joinRequest
+      allow update: if isAuthenticated() &&
+        (
+          // Case 1: Partner submits join request
+          (resource.data.status == 'pending' &&
+           request.resource.data.status == 'pending' &&
+           request.resource.data.joinRequest.uid == request.auth.uid) ||
+          // Case 2: Creator approves or revokes
+          (resource.data.creatorUid == request.auth.uid)
+        );
+        
+      allow delete: if isAuthenticated() && resource.data.creatorUid == request.auth.uid;
+    }
+    
+    // Spaces: strictly two members
+    match /spaces/{spaceId} {
+      // Allowed to get if authenticated and a member, or creating with exactly 2 capacity
+      allow get: if isAuthenticated() && (request.auth.uid in resource.data.members || resource.data.createdBy == request.auth.uid);
+      allow list: if false; // No public space listing
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.members.size() <= 2;
+        
+      allow update: if isAuthenticated() && (request.auth.uid in resource.data.members);
+      allow delete: if isAuthenticated() && (request.auth.uid in resource.data.members);
+
+      // Wrapped space keys per member
+      match /keys/{uid} {
+        allow read: if isSpaceMember(spaceId) && request.auth.uid == uid;
+        allow write: if isSpaceMember(spaceId) && 
+          (request.auth.uid == uid || request.auth.uid == getSpace(spaceId).createdBy);
+      }
+
+      // Partner Profiles
+      match /profiles/{uid} {
+        allow read, write: if isSpaceMember(spaceId);
+      }
+
+      // Presence: self-declared, expiresAt
+      match /presence/{uid} {
+        allow read: if isSpaceMember(spaceId);
+        allow write: if isSpaceMember(spaceId) && request.auth.uid == uid;
+      }
+
+      // Quick pings (thinking of you, arrived safe)
+      match /pings/{pingId} {
+        allow read: if isSpaceMember(spaceId);
+        allow create: if isSpaceMember(spaceId) && request.resource.data.fromUid == request.auth.uid;
+        allow update, delete: if isSpaceMember(spaceId) && resource.data.fromUid == request.auth.uid;
+      }
+
+      // Daily Updates (Feelings & Actions)
+      match /updates/{updateId} {
+        allow read: if isSpaceMember(spaceId);
+        allow write: if isSpaceMember(spaceId);
+        
+        match /reactions/{reactionId} {
+          allow read, write: if isSpaceMember(spaceId);
+        }
+      }
+
+      // Question State
+      match /qstate/{docId} {
+        allow read, write: if isSpaceMember(spaceId);
+      }
+
+      // Question Answers: REVEAL TOGETHER ENFORCEMENT
+      // A partner can only read the other's answer if their own answer exists!
+      match /answers/{answerDocId} {
+        allow create: if isSpaceMember(spaceId) && request.resource.data.uid == request.auth.uid;
+        allow update: if isSpaceMember(spaceId) && resource.data.uid == request.auth.uid;
+        allow delete: if isSpaceMember(spaceId) && resource.data.uid == request.auth.uid;
+        
+        allow read: if isSpaceMember(spaceId) && (
+          // Author can always read their own answer
+          resource.data.uid == request.auth.uid ||
+          // Partner can read only if reader has already submitted their own answer for this question
+          exists(/databases/$(database)/documents/spaces/$(spaceId)/answers/$(resource.data.questionId + '_' + request.auth.uid))
+        );
+      }
+
+      // Open When Letters: TIME GATED ENFORCEMENT
+      match /letters/{letterId} {
+        allow create: if isSpaceMember(spaceId) && request.resource.data.fromUid == request.auth.uid;
+        allow update: if isSpaceMember(spaceId) && (
+          resource.data.fromUid == request.auth.uid ||
+          // Recipient can update openedAt and notify flags upon reading
+          (resource.data.toUid == request.auth.uid && request.time >= resource.data.unsealAt)
+        );
+        allow delete: if isSpaceMember(spaceId) && resource.data.fromUid == request.auth.uid;
+        
+        allow read: if isSpaceMember(spaceId) && (
+          // Sender can always read their own letters
+          resource.data.fromUid == request.auth.uid ||
+          // Recipient can only read when unsealed
+          (resource.data.toUid == request.auth.uid &&
+            (!('unsealAt' in resource.data) || resource.data.unsealAt == null || request.time >= resource.data.unsealAt))
+        );
+      }
+
+      // Media Blobs
+      match /blobs/{blobId}/chunks/{chunkId} {
+        allow read, write: if isSpaceMember(spaceId);
+      }
+
+      // Occasions, Visits, Timeline, Touch (streak), Agreements, Checkins, Plan, Proposals
+      match /occasions/{id} { allow read, write: if isSpaceMember(spaceId); }
+      match /visits/{id} { allow read, write: if isSpaceMember(spaceId); }
+      match /timeline/{id} { allow read, write: if isSpaceMember(spaceId); }
+      match /touch/{id} { allow read, write: if isSpaceMember(spaceId); }
+      match /agreements/{id} { allow read, write: if isSpaceMember(spaceId); }
+      match /proposals/{id} { allow read, write: if isSpaceMember(spaceId); }
+      match /calls/{id} { allow read, write: if isSpaceMember(spaceId); }
+      match /games/{id} { allow read, write: if isSpaceMember(spaceId); }
+      match /plan/{id} { allow read, write: if isSpaceMember(spaceId); }
+      match /repair/{id} { allow read, write: if isSpaceMember(spaceId); }
+
+      // Weekly Check-in: readable only if checkinsOptIn is enabled
+      match /checkins/{checkinId} {
+        allow read, write: if isSpaceMember(spaceId) &&
+          getSpace(spaceId).flags.checkinsOptIn[request.auth.uid] == true;
+      }
+
+      // Vault (Private mode): READABLE ONLY WHEN BOTH OPTED IN
+      match /vault/{itemId} {
+        allow read, write: if isSpaceMember(spaceId) &&
+          getSpace(spaceId).flags.privateOptIn[getSpace(spaceId).members[0]] == true &&
+          getSpace(spaceId).flags.privateOptIn[getSpace(spaceId).members[1]] == true;
+      }
+
+      // Inbox notification lightweight pointers
+      match /inbox/{uid} {
+        allow read, write: if isSpaceMember(spaceId) && request.auth.uid == uid;
+      }
+
+      // Server clock skew measurement
+      match /clock/{uid} {
+        allow read, write: if isUser(uid);
+      }
+    }
+  }
+}

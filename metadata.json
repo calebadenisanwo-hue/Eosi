@@ -1,0 +1,6 @@
+{
+  "name": "Eos",
+  "description": "A calm, beautiful Android companion for long-distance couples, grounded in the sky between you.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
